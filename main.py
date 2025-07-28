@@ -1,5 +1,5 @@
 from dotenv import load_dotenv
-from agents import Agent, Runner, function_tool, OpenAIChatCompletionsModel
+from agents import Agent, Runner, function_tool, OpenAIChatCompletionsModel, SQLiteSession
 from openai import AsyncOpenAI
 import os
 import asyncio
@@ -16,12 +16,15 @@ gemini_model = OpenAIChatCompletionsModel(
     model="gemini-2.0-flash", openai_client=gemini_client
 )
 
+# Session
+session = SQLiteSession(session_id="health_agent_session", db_path="session.db")
+
 # Agents
 
 diagnoser_instructions = (
     "You are a health agent who makes diagnoses based on medical information you receive. "
     "There are three categories under which your work will fall. You will receive data from a blood report in the form of a JSON, "
-    "image data from an X-Ray, or a list of symptoms. Based on this information you will diagnose possible medical conditions the user may have. "
+    "or a list of symptoms. Based on this information you will diagnose possible medical conditions the user may have. "
     "A user may also ask you what certain medical terms mean, to which you will reply with a simple definition which can be  understandable without a medical background. "
     "When giving medical information, make sure to tell the user to speak with a qualified medical professional at the end of whatever you are saying."
 )
@@ -65,7 +68,7 @@ blood_report_agent = Agent(
 
 router_instructions = (
     "You are the entry point agent for a medical diagnosing chatbot. "
-    "You receive a user text input which will identify what kind of diagnosis they are looking for. This will be either diagnosing a blood report in the form of a PDF, X-Ray in an image format, or user-inputted symptoms in natural language. "
+    "You receive a user text input which will identify what kind of diagnosis they are looking for. This will be either diagnosing a blood report in the form of a PDF, or user-inputted symptoms in natural language. "
     "If the user wants a blood report to be analyzed, you must handoff to the blood_report_agent. Otherwise, you can handoff to the diagnoser agent. "
     "You do not make diagnoses by yourself, you simply route requests to the appropriate agent. "
     "Once routing to the appropriate agent, your job is complete. If you are not able to route a request, then you can ask the user to enter an appropriate input. "
@@ -100,7 +103,7 @@ user_input = st.text_input(
 submit_text = st.button("Submit Text")
 
 if submit_text and user_input.strip():
-    result = asyncio.run(Runner.run(router_agent, user_input))
+    result = asyncio.run(Runner.run(router_agent, user_input, session=session))
     print(dir(result))
     st.session_state.current_agent_name = result.last_agent.name
     st.session_state.conversation_history.append(f"🧑‍💻 You: {user_input}")
@@ -119,7 +122,7 @@ if st.session_state.current_agent_name == "Blood Report Parser":
                 f.write(uploaded_file.read())
 
             input_data = f"The blood report is located at: {file_path}"
-            result = asyncio.run(Runner.run(router_agent, input_data))
+            result = asyncio.run(Runner.run(router_agent, input_data, session=session))
             st.session_state.current_agent_name = result.last_agent.name
             st.session_state.conversation_history.append("📄 File uploaded: blood report")
             st.session_state.conversation_history.append(f"🤖 {result.last_agent.name}: {result.final_output}")
@@ -129,11 +132,8 @@ if st.session_state.current_agent_name == "Blood Report Parser":
             st.error(f"Error processing uploaded file: {e}")
 
 
-st.markdown("---")
-st.subheader("Conversation History")
-for message in st.session_state.conversation_history:
-    st.write(message)
 
+st.markdown("---")
 if st.button("Restart"):
     st.session_state.current_agent_name = "Router"
     st.session_state.conversation_history = []
