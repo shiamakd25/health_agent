@@ -87,6 +87,11 @@ if "conversation_history" not in st.session_state:
 
 if "current_agent_name" not in st.session_state:
     st.session_state.current_agent_name = "Router"
+    
+st.subheader("Conversation History")
+for message in st.session_state.conversation_history:
+    st.write(message)
+st.markdown("---")
 
 user_input = st.text_input(
     "Describe your issue (e.g., 'I have a blood report to diagnose',  'I have the following symptoms:...')",
