@@ -1,5 +1,11 @@
 from dotenv import load_dotenv
-from agents import Agent, Runner, function_tool, OpenAIChatCompletionsModel, SQLiteSession
+from agents import (
+    Agent,
+    Runner,
+    function_tool,
+    OpenAIChatCompletionsModel,
+    SQLiteSession,
+)
 from openai import AsyncOpenAI
 import os
 import asyncio
@@ -38,13 +44,13 @@ def extract_text(file_path: str):
     """Extract text from a pdf file at the given path"""
     text = ""
     try:
-            doc = pymupdf.open(file_path)
-            for page_number in range(doc.page_count):
-                page = doc.load_page(page_number)
-                text += page.get_text()
+        doc = pymupdf.open(file_path)
+        for page_number in range(doc.page_count):
+            page = doc.load_page(page_number)
+            text += page.get_text()
     except Exception as e:
-            print(f"Error extracting text: {e}")
-            return {"status": "failure"}
+        print(f"Error extracting text: {e}")
+        return {"status": "failure"}
     return text
 
 
@@ -90,7 +96,7 @@ if "conversation_history" not in st.session_state:
 
 if "current_agent_name" not in st.session_state:
     st.session_state.current_agent_name = "Router"
-    
+
 st.subheader("Conversation History")
 for message in st.session_state.conversation_history:
     st.write(message)
@@ -124,13 +130,16 @@ if st.session_state.current_agent_name == "Blood Report Parser":
             input_data = f"The blood report is located at: {file_path}"
             result = asyncio.run(Runner.run(router_agent, input_data, session=session))
             st.session_state.current_agent_name = result.last_agent.name
-            st.session_state.conversation_history.append("📄 File uploaded: blood report")
-            st.session_state.conversation_history.append(f"🤖 {result.last_agent.name}: {result.final_output}")
+            st.session_state.conversation_history.append(
+                "📄 File uploaded: blood report"
+            )
+            st.session_state.conversation_history.append(
+                f"🤖 {result.last_agent.name}: {result.final_output}"
+            )
             st.write(f"🤖 {result.last_agent.name}: {result.final_output}")
 
         except Exception as e:
             st.error(f"Error processing uploaded file: {e}")
-
 
 
 st.markdown("---")
